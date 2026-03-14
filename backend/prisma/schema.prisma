@@ -1,0 +1,229 @@
+// Prisma Schema for Phrolody Symphonia
+// Database: PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  username      String    @unique
+  passwordHash  String?   // Nullable for OAuth users
+  firstName     String?
+  lastName      String?
+  avatar        String?
+  role          UserRole  @default(USER)
+  isVerified    Boolean   @default(false)
+  isActive      Boolean   @default(true)
+  lastLoginAt   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  refreshTokens RefreshToken[]
+  playlists     Playlist[]
+  favorites     Favorite[]
+  playHistory   PlayHistory[]
+  uploads       Track[]       @relation("UploadedBy")
+  oauthAccounts OAuthAccount[]
+
+  @@index([email])
+  @@index([username])
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ARTIST
+  ADMIN
+  MODERATOR
+}
+
+// OAuth accounts for social login
+model OAuthAccount {
+  id           String   @id @default(uuid())
+  provider     String   // google, facebook, etc.
+  providerId   String   // ID from OAuth provider
+  accessToken  String?
+  refreshToken String?
+  expiresAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@index([userId])
+  @@map("oauth_accounts")
+}
+
+// Refresh tokens for JWT authentication
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  isRevoked Boolean  @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// Track/Music model
+model Track {
+  id           String    @id @default(uuid())
+  title        String
+  composer     String
+  performer    String?
+  conductor    String?
+  orchestra    String?
+  opus         String?
+  catalogNumber String?
+  movement     String?
+  key          String?
+  duration     Int       // Duration in seconds
+  year         Int?
+  description  String?   @db.Text
+  audioUrl     String    // Supabase Storage URL
+  coverArt     String?   // Album/Cover art URL
+  waveformData String?   @db.Text // JSON data for waveform visualization
+  fileSize     Int       // File size in bytes
+  audioFormat  String    // mp3, flac, wav, etc.
+  bitrate      Int?      // Audio bitrate
+  sampleRate   Int?      // Audio sample rate
+  isPublic     Boolean   @default(true)
+  playCount    Int       @default(0)
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  uploadedById String
+  uploadedBy   User          @relation("UploadedBy", fields: [uploadedById], references: [id], onDelete: Cascade)
+  genreId      String?
+  genre        Genre?        @relation(fields: [genreId], references: [id], onDelete: SetNull)
+  periodId     String?
+  period       Period?       @relation(fields: [periodId], references: [id], onDelete: SetNull)
+  playlistTracks PlaylistTrack[]
+  favorites    Favorite[]
+  playHistory  PlayHistory[]
+
+  @@index([title])
+  @@index([composer])
+  @@index([uploadedById])
+  @@index([genreId])
+  @@index([periodId])
+  @@index([createdAt])
+  @@map("tracks")
+}
+
+// Genre classification
+model Genre {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tracks Track[]
+
+  @@map("genres")
+}
+
+// Musical period classification
+model Period {
+  id          String   @id @default(uuid())
+  name        String   @unique // Baroque, Classical, Romantic, Modern, etc.
+  startYear   Int?
+  endYear     Int?
+  description String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tracks Track[]
+
+  @@map("periods")
+}
+
+// Playlist model
+model Playlist {
+  id          String    @id @default(uuid())
+  name        String
+  description String?   @db.Text
+  coverImage  String?
+  isPublic    Boolean   @default(false)
+  isCollaborative Boolean @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  tracks PlaylistTrack[]
+
+  @@index([userId])
+  @@index([createdAt])
+  @@map("playlists")
+}
+
+// Join table for playlists and tracks
+model PlaylistTrack {
+  id        String   @id @default(uuid())
+  position  Int      // Order in playlist
+  addedAt   DateTime @default(now())
+
+  playlistId String
+  playlist   Playlist @relation(fields: [playlistId], references: [id], onDelete: Cascade)
+  trackId    String
+  track      Track    @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([playlistId, trackId])
+  @@index([playlistId])
+  @@index([trackId])
+  @@map("playlist_tracks")
+}
+
+// User favorites
+model Favorite {
+  id        String   @id @default(uuid())
+  createdAt DateTime @default(now())
+
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId String
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, trackId])
+  @@index([userId])
+  @@index([trackId])
+  @@map("favorites")
+}
+
+// Play history for tracking and recommendations
+model PlayHistory {
+  id         String   @id @default(uuid())
+  playedAt   DateTime @default(now())
+  duration   Int      // How long the track was played (seconds)
+  completed  Boolean  @default(false) // Whether the track was fully played
+
+  userId  String
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  trackId String
+  track   Track  @relation(fields: [trackId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([trackId])
+  @@index([playedAt])
+  @@map("play_history")
+}
