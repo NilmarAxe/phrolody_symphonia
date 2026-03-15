@@ -16,19 +16,26 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import type { SearchFilters } from '@/types';
 
-function BrowsePage() {
+function BrowseContent() {
   const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<SearchFilters>({
-    search: searchParams.get('search') || '',
-    genreId: searchParams.get('genreId') || '',
-    periodId: searchParams.get('periodId') || '',
+    search: '',
+    genreId: '',
+    periodId: '',
     sortBy: 'createdAt',
     sortOrder: 'desc',
   });
   const [showFilters, setShowFilters] = useState(false);
 
   const { playTrack, setQueue } = usePlayerStore();
+
+  useEffect(() => {
+    const search = searchParams.get('search') || '';
+    const genreId = searchParams.get('genreId') || '';
+    const periodId = searchParams.get('periodId') || '';
+    setFilters((prev) => ({ ...prev, search, genreId, periodId }));
+  }, [searchParams]);
 
   const { data: tracksData, isLoading } = useQuery({
     queryKey: ['tracks', page, filters],
@@ -44,13 +51,6 @@ function BrowsePage() {
     queryKey: ['periods'],
     queryFn: () => periodsService.getPeriods(),
   });
-
-  useEffect(() => {
-    const search = searchParams.get('search') || '';
-    const genreId = searchParams.get('genreId') || '';
-    const periodId = searchParams.get('periodId') || '';
-    setFilters((prev) => ({ ...prev, search, genreId, periodId }));
-  }, [searchParams]);
 
   const handlePlayTrack = (index: number) => {
     if (tracksData?.data) {
@@ -89,9 +89,7 @@ function BrowsePage() {
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-display font-semibold text-secondary-200">Filters</h3>
                     {hasActiveFilters && (
-                      <button onClick={clearFilters} className="text-xs text-primary-500 hover:text-primary-400">
-                        Clear all
-                      </button>
+                      <button onClick={clearFilters} className="text-xs text-primary-500 hover:text-primary-400">Clear all</button>
                     )}
                   </div>
                   <div>
@@ -199,10 +197,10 @@ function BrowsePage() {
   );
 }
 
-export default function BrowsePageWrapper() {
+export default function BrowsePage() {
   return (
-    <Suspense fallback={<div className="min-h-screen bg-neutral-950" />}>
-      <BrowsePage />
+    <Suspense fallback={<div className="min-h-screen bg-neutral-950 flex items-center justify-center"><LoadingSpinner /></div>}>
+      <BrowseContent />
     </Suspense>
   );
 }
