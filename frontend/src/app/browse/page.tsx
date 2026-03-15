@@ -1,6 +1,5 @@
 'use client';
 
-export const dynamic = 'force-dynamic';
 import Link from 'next/link';
 import { useState, useEffect, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
