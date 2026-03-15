@@ -197,10 +197,4 @@ function BrowseContent() {
   );
 }
 
-export default function BrowsePage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-neutral-950 flex items-center justify-center"><LoadingSpinner /></div>}>
-      <BrowseContent />
-    </Suspense>
-  );
-}
+export default BrowseContent;
