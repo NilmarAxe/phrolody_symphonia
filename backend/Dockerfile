@@ -1,5 +1,8 @@
 # Multi-stage build for production optimization
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
+
+# Install OpenSSL and other dependencies
+RUN apt-get update -y && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 
 # Install dependencies only when needed
 FROM base AS dependencies
@@ -73,8 +76,8 @@ COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nestjs -u 1001 && \
+RUN addgroup --gid 1001 nodejs && \
+    adduser --disabled-password --gecos "" --uid 1001 --ingroup nodejs nestjs && \
     chown -R nestjs:nodejs /app
 
 # Switch to non-root user
@@ -87,5 +90,5 @@ EXPOSE 4000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=40s --retries=3 \
     CMD node -e "require('http').get('http://localhost:4000/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start production server
-CMD ["node", "dist/main.js"]
+# Start production server with migrations
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main.js"]
