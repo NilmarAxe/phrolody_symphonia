@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useSearchParams } from 'next/navigation';
 import { tracksService } from '@/services/tracks.service';
@@ -16,7 +16,7 @@ import { motion } from 'framer-motion';
 import Image from 'next/image';
 import type { SearchFilters } from '@/types';
 
-export default function BrowsePage() {
+function BrowsePageInner() {
   const searchParams = useSearchParams();
   const [page, setPage] = useState(1);
   const [filters, setFilters] = useState<SearchFilters>({
@@ -322,5 +322,13 @@ export default function BrowsePage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function BrowsePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-neutral-950" />}>
+      <BrowsePageInner />
+    </Suspense>
   );
 }
