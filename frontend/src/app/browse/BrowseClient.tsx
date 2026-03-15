@@ -197,4 +197,10 @@ function BrowseContent() {
   );
 }
 
-export default BrowseContent;
+export default function BrowseClient() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-neutral-950" />}>
+      <BrowseContent />
+    </Suspense>
+  );
+}
