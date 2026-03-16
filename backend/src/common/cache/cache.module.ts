@@ -20,6 +20,7 @@ import { CacheService } from './cache.service';
             socket: {
               host: redisHost,
               port: redisPort,
+              tls: true,
             },
             password: redisPassword || undefined,
             ttl: cacheTtl * 1000, // Convert to milliseconds
