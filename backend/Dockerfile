@@ -1,5 +1,5 @@
 # Multi-stage build for production optimization
-FROM node:20-alpine AS base
+FROM node:20-slim AS base
 
 # Install dependencies only when needed
 FROM base AS dependencies
@@ -60,8 +60,11 @@ RUN npx prisma generate
 RUN npm run build
 
 # Production stage
-FROM base AS production
+FROM node:20-slim AS production
 WORKDIR /app
+
+# Install OpenSSL
+RUN apt-get update -y && apt-get install -y openssl && rm -rf /var/lib/apt/lists/*
 
 # Set production environment
 ENV NODE_ENV=production
@@ -73,8 +76,8 @@ COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
 
 # Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S nestjs -u 1001 && \
+RUN addgroup --gid 1001 nodejs && \
+    adduser --disabled-password --gecos "" --uid 1001 --ingroup nodejs nestjs && \
     chown -R nestjs:nodejs /app
 
 # Switch to non-root user
