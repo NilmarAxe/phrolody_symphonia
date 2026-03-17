@@ -30,6 +30,8 @@ export function Sidebar() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
 
+  const isAdmin = user?.role === 'ADMIN';
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -51,8 +53,10 @@ export function Sidebar() {
   const secondaryItems = [
     { name: 'Profile', href: '/profile', icon: User },
     { name: 'Settings', href: '/settings', icon: Settings },
-    { name: 'Upload', href: '/upload', icon: Upload },
-    { name: 'Admin', href: '/admin', icon: Shield },
+    ...(isAdmin ? [
+      { name: 'Upload', href: '/upload', icon: Upload },
+      { name: 'Admin', href: '/admin', icon: Shield },
+    ] : []),
   ];
 
   return (
