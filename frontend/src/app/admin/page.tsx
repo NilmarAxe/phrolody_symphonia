@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useQuery, useMutation, } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth.store';
 import { tracksService } from '@/services/tracks.service';
+import { genresService } from '@/services/genres.service';
+import { periodsService } from '@/services/periods.service';
 import { api } from '@/config/api';
 import { Button } from '@/components/ui/Button';
 import { Card, CardContent } from '@/components/ui/Card';
@@ -33,9 +35,14 @@ function EditTrackModal({ track, onClose, onSave }: EditModalProps) {
     year: track.year?.toString() || '',
     description: track.description || '',
     coverArt: track.coverArt || '',
+    genreId: track.genre?.id || '',
+    periodId: track.period?.id || '',
   });
   const [uploadingCover, setUploadingCover] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const { data: genres } = useQuery({ queryKey: ['genres'], queryFn: () => genresService.getGenres() });
+  const { data: periods } = useQuery({ queryKey: ['periods'], queryFn: () => periodsService.getPeriods() });
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -44,9 +51,7 @@ function EditTrackModal({ track, onClose, onSave }: EditModalProps) {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      const response = await api.post('/storage/upload/cover', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+      const response = await api.post('/storage/upload/cover', formData, { headers: { 'Content-Type': 'multipart/form-data' } });
       setForm(prev => ({ ...prev, coverArt: response.data.url }));
       toast.success('Cover uploaded!');
     } catch {
@@ -63,6 +68,8 @@ function EditTrackModal({ track, onClose, onSave }: EditModalProps) {
         ...form,
         year: form.year ? parseInt(form.year) : undefined,
         coverArt: form.coverArt || undefined,
+        genreId: form.genreId || undefined,
+        periodId: form.periodId || undefined,
       });
       toast.success('Track updated!');
       onSave();
@@ -86,26 +93,18 @@ function EditTrackModal({ track, onClose, onSave }: EditModalProps) {
         </div>
 
         <div className="p-6 space-y-4">
-          {/* Cover Art */}
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 rounded-lg bg-neutral-800 overflow-hidden flex-shrink-0">
               {form.coverArt ? (
                 <Image src={form.coverArt} alt={form.title} width={80} height={80} className="object-cover w-full h-full" />
               ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <Music className="w-8 h-8 text-neutral-600" />
-                </div>
+                <div className="w-full h-full flex items-center justify-center"><Music className="w-8 h-8 text-neutral-600" /></div>
               )}
             </div>
             <div className="flex-1">
               <label className="block text-sm text-neutral-400 mb-2">Cover Image URL</label>
-              <input
-                type="text"
-                value={form.coverArt}
-                onChange={e => setForm(prev => ({ ...prev, coverArt: e.target.value }))}
-                placeholder="https://..."
-                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-secondary-200 placeholder-neutral-600 focus:outline-none focus:border-primary-500 text-sm mb-2"
-              />
+              <input type="text" value={form.coverArt} onChange={e => setForm(prev => ({ ...prev, coverArt: e.target.value }))}
+                placeholder="https://..." className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-secondary-200 placeholder-neutral-600 focus:outline-none focus:border-primary-500 text-sm mb-2" />
               <label className="cursor-pointer inline-flex items-center gap-2 text-sm text-primary-500 hover:text-primary-400">
                 <input type="file" accept=".jpg,.jpeg,.png,.webp" className="hidden" onChange={handleCoverUpload} />
                 {uploadingCover ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
@@ -124,6 +123,25 @@ function EditTrackModal({ track, onClose, onSave }: EditModalProps) {
               <label className="block text-sm text-neutral-400 mb-1">Composer *</label>
               <input type="text" value={form.composer} onChange={e => setForm(prev => ({ ...prev, composer: e.target.value }))}
                 className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-secondary-200 focus:outline-none focus:border-primary-500" />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm text-neutral-400 mb-1">Genre</label>
+              <select value={form.genreId} onChange={e => setForm(prev => ({ ...prev, genreId: e.target.value }))}
+                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-secondary-200 focus:outline-none focus:border-primary-500">
+                <option value="">Select genre...</option>
+                {genres?.map(genre => <option key={genre.id} value={genre.id}>{genre.name}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm text-neutral-400 mb-1">Period</label>
+              <select value={form.periodId} onChange={e => setForm(prev => ({ ...prev, periodId: e.target.value }))}
+                className="w-full bg-neutral-800 border border-neutral-700 rounded-lg px-3 py-2 text-secondary-200 focus:outline-none focus:border-primary-500">
+                <option value="">Select period...</option>
+                {periods?.map(period => <option key={period.id} value={period.id}>{period.name}</option>)}
+              </select>
             </div>
           </div>
 
@@ -184,9 +202,7 @@ export default function AdminPage() {
   const [editingTrack, setEditingTrack] = useState<any>(null);
 
   useEffect(() => { setHydrated(true); }, []);
-  useEffect(() => {
-    if (hydrated && !isAuthenticated) router.push('/auth/login');
-  }, [isAuthenticated, hydrated, router]);
+  useEffect(() => { if (hydrated && !isAuthenticated) router.push('/auth/login'); }, [isAuthenticated, hydrated, router]);
 
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['admin-tracks'],
@@ -196,17 +212,12 @@ export default function AdminPage() {
 
   const deleteMutation = useMutation({
     mutationFn: (trackId: string) => tracksService.deleteTrack(trackId),
-    onSuccess: () => {
-      refetch();
-      toast.success('Track deleted!');
-    },
+    onSuccess: () => { refetch(); toast.success('Track deleted!'); },
     onError: () => toast.error('Failed to delete track'),
   });
 
   const handleDelete = (trackId: string, title: string) => {
-    if (confirm(`Delete "${title}"? This cannot be undone.`)) {
-      deleteMutation.mutate(trackId);
-    }
+    if (confirm(`Delete "${title}"? This cannot be undone.`)) deleteMutation.mutate(trackId);
   };
 
   if (!hydrated || !isAuthenticated) {
@@ -221,16 +232,11 @@ export default function AdminPage() {
         <div className="container mx-auto px-4 py-12">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-4xl font-display font-bold text-secondary-200 mb-2">
-                Admin Panel
-              </h1>
+              <h1 className="text-4xl font-display font-bold text-secondary-200 mb-2">Admin Panel</h1>
               <p className="text-neutral-500">{tracks.length} tracks in the platform</p>
             </div>
             <Link href="/upload">
-              <Button>
-                <Upload className="w-4 h-4 mr-2" />
-                Upload Track
-              </Button>
+              <Button><Upload className="w-4 h-4 mr-2" />Upload Track</Button>
             </Link>
           </div>
         </div>
@@ -256,9 +262,7 @@ export default function AdminPage() {
                       {track.coverArt ? (
                         <Image src={track.coverArt} alt={track.title} width={40} height={40} className="object-cover" />
                       ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <Music className="w-4 h-4 text-neutral-600" />
-                        </div>
+                        <div className="w-full h-full flex items-center justify-center"><Music className="w-4 h-4 text-neutral-600" /></div>
                       )}
                     </div>
                     <span className="text-secondary-200 font-medium line-clamp-1">{track.title}</span>
@@ -268,16 +272,10 @@ export default function AdminPage() {
                     {Math.floor(track.duration / 60)}:{(track.duration % 60).toString().padStart(2, '0')}
                   </div>
                   <div className="col-span-2 flex items-center justify-end gap-2">
-                    <button
-                      onClick={() => setEditingTrack(track)}
-                      className="p-2 rounded-lg text-neutral-500 hover:text-primary-500 hover:bg-neutral-800 transition-colors"
-                    >
+                    <button onClick={() => setEditingTrack(track)} className="p-2 rounded-lg text-neutral-500 hover:text-primary-500 hover:bg-neutral-800 transition-colors">
                       <Edit className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => handleDelete(track.id, track.title)}
-                      className="p-2 rounded-lg text-neutral-500 hover:text-red-500 hover:bg-neutral-800 transition-colors"
-                    >
+                    <button onClick={() => handleDelete(track.id, track.title)} className="p-2 rounded-lg text-neutral-500 hover:text-red-500 hover:bg-neutral-800 transition-colors">
                       <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
@@ -289,11 +287,7 @@ export default function AdminPage() {
       </div>
 
       {editingTrack && (
-        <EditTrackModal
-          track={editingTrack}
-          onClose={() => setEditingTrack(null)}
-          onSave={() => refetch()}
-        />
+        <EditTrackModal track={editingTrack} onClose={() => setEditingTrack(null)} onSave={() => refetch()} />
       )}
     </div>
   );
