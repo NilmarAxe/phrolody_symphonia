@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20Site-C41E3A?style=for-the-badge)](https://phrolodysymphonia-web.vercel.app)
+[![Live Demo](https://img.shields.io/badge/Live%20Demo-Visit%20Site-C41E3A?style=for-the-badge)](https://phrolody-symphonia.vercel.app)
 [![Backend](https://img.shields.io/badge/API-Documentation-46E3B7?style=for-the-badge)](https://phrolody-symphonia.onrender.com/api/docs)
 [![GitHub](https://img.shields.io/badge/Author-NilmarAxe-181717?style=for-the-badge&logo=github)](https://github.com/NilmarAxe)
 
@@ -24,7 +24,7 @@ The platform is built as a monorepo containing a Next.js 14 frontend and a NestJ
 
 | Service | URL |
 |---|---|
-| Web Application | https://phrolodysymphonia-web.vercel.app |
+| Web Application | https://phrolody-symphonia.vercel.app |
 | API Documentation | https://phrolody-symphonia.onrender.com/api/docs |
 | Health Check | https://phrolody-symphonia.onrender.com/api/v1/health |
 
